@@ -1,0 +1,19 @@
+const HttpResponseCode = {
+    NOT_FOUND: 404,
+    UNAUTHENTICATED: 401,
+    ACCESS_DENIED: 403,
+    INTERNAL_SERVER_ERROR: 501,
+    BAD_REQUEST: 400,
+    UNPROCESSABLE_ENTITY: 422, // Fixed typo: was 42
+    
+    SUCCESS: 200,
+    CREATED: 201,
+    NO_CONTENT: 204,
+    CONFLICT: 409,
+    FORBIDDEN: 403, // Same as ACCESS_DENIED but more standard
+    METHOD_NOT_ALLOWED: 405,
+    TOO_MANY_REQUESTS: 429,
+    SERVICE_UNAVAILABLE: 503
+};
+
+export default HttpResponseCode;
