@@ -1,11 +1,12 @@
 import HttpResponse from "../../constants/response-status.contants.js";
 import staffSvc from "./staff.service.js";
+import Joi from "joi";
 
 class StaffController {
   createStaff = async (req, res, next) => {
     try {
       const adminId = req.loggedInUser._id;
-      const staffData = req.body;
+      const staffData = req.validatedBody || req.body;
       const file = req.file;
 
       const staff = await staffSvc.createStaff(staffData, file, adminId);
@@ -26,8 +27,17 @@ class StaffController {
     try {
       const municipalityId = req.loggedInUser.municipalityId;
       const filter = req.validatedQuery || req.query;
+      const requestingUserId = req.loggedInUser._id;
 
-      const result = await staffSvc.getStaff(filter, municipalityId);
+      // Convert comma-separated strings to arrays for query
+      if (filter.assignedWards && typeof filter.assignedWards === 'string') {
+        filter.assignedWards = filter.assignedWards.split(',').map(w => w.trim());
+      }
+      if (filter.skills && typeof filter.skills === 'string') {
+        filter.skills = filter.skills.split(',').map(s => s.trim());
+      }
+
+      const result = await staffSvc.getStaff(filter, municipalityId, requestingUserId);
 
       res.json({
         data: result.staff,
@@ -46,8 +56,9 @@ class StaffController {
     try {
       const { id } = req.params;
       const municipalityId = req.loggedInUser.municipalityId;
+      const requestingUserId = req.loggedInUser._id;
 
-      const staff = await staffSvc.getStaffById(id, municipalityId);
+      const staff = await staffSvc.getStaffById(id, municipalityId, requestingUserId);
 
       res.json({
         data: staff,
@@ -64,12 +75,11 @@ class StaffController {
   updateStaff = async (req, res, next) => {
     try {
       const { id } = req.params;
-      const adminId = req.loggedInUser._id;
-      const adminMunicipalityId = req.loggedInUser.municipalityId;
-      const updateData = req.body;
+      const requestingUserId = req.loggedInUser._id;
+      const updateData = req.validatedBody || req.body;
       const file = req.file;
 
-      const staff = await staffSvc.updateStaff(id, updateData, file, adminId, adminMunicipalityId);
+      const staff = await staffSvc.updateStaff(id, updateData, file, requestingUserId);
 
       res.json({
         data: staff,
@@ -86,9 +96,9 @@ class StaffController {
   deleteStaff = async (req, res, next) => {
     try {
       const { id } = req.params;
-      const adminMunicipalityId = req.loggedInUser.municipalityId;
+      const requestingUserId = req.loggedInUser._id;
 
-      await staffSvc.deleteStaff(id, adminMunicipalityId);
+      await staffSvc.deleteStaff(id, requestingUserId);
 
       res.json({
         data: null,
@@ -123,7 +133,7 @@ class StaffController {
   updateMyProfile = async (req, res, next) => {
     try {
       const staffId = req.loggedInUser._id;
-      const updateData = req.body;
+      const updateData = req.validatedBody || req.body;
       const file = req.file;
 
       const staff = await staffSvc.updateMyProfile(staffId, updateData, file);
@@ -145,6 +155,14 @@ class StaffController {
       const staffId = req.loggedInUser._id;
       const filter = req.validatedQuery || req.query;
 
+      // Handle comma-separated statuses/categories
+      if (filter.status && typeof filter.status === 'string' && filter.status.includes(',')) {
+        filter.status = filter.status.split(',').map(s => s.trim());
+      }
+      if (filter.category && typeof filter.category === 'string' && filter.category.includes(',')) {
+        filter.category = filter.category.split(',').map(c => c.trim());
+      }
+
       const result = await staffSvc.getMyAssignedReports(staffId, filter);
 
       res.json({
@@ -159,7 +177,45 @@ class StaffController {
       next(exception);
     }
   };
-  
+
+  updateAvailability = async (req, res, next) => {
+    try {
+      const staffId = req.loggedInUser._id;
+      const { availability } = req.validatedBody || req.body;
+
+      const result = await staffSvc.updateAvailability(staffId, availability);
+
+      res.json({
+        data: result,
+        message: `Availability ${availability ? 'enabled' : 'disabled'} successfully`,
+        status: HttpResponse.success,
+        options: null
+      });
+
+    } catch (exception) {
+      next(exception);
+    }
+  };
+
+  updateLocation = async (req, res, next) => {
+    try {
+      const staffId = req.loggedInUser._id;
+      const location = req.validatedBody || req.body;
+
+      const result = await staffSvc.updateLocation(staffId, location);
+
+      res.json({
+        data: result,
+        message: "Location updated successfully",
+        status: HttpResponse.success,
+        options: null
+      });
+
+    } catch (exception) {
+      next(exception);
+    }
+  };
+
 }
 
 const staffCtrl = new StaffController();

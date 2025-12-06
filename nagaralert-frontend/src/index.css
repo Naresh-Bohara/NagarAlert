@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: 59 130 246;
+    --secondary: 100 116 139;
+    --success: 34 197 94;
+    --warning: 245 158 11;
+    --danger: 239 68 68;
+  }
+
+ body {
+    @apply font-sans text-gray-900 bg-gray-50; /* Inter */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Poppins', sans-serif;
+    @apply font-bold tracking-tight;
+}
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 rounded-full hover:bg-gray-500;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 
+           transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 bg-white text-gray-700 font-medium rounded-lg border border-gray-300 
+           hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 
+           transition-colors duration-200;
+  }
+
+  .input-primary {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none 
+           focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-shadow duration-200;
+  }
+
+.card {
+  @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300;
+}
+
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 rounded-xl shadow-lg;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply bg-success-100 text-success-800;
+  }
+
+  .badge-warning {
+    @apply bg-warning-100 text-warning-800;
+  }
+
+  .badge-danger {
+    @apply bg-danger-100 text-danger-800;
+  }
+
+  .badge-info {
+    @apply bg-primary-100 text-primary-800;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+/* Leaflet map customizations */
+.leaflet-container {
+  @apply rounded-lg;
+}
+
+.leaflet-popup-content {
+  @apply font-sans;
+}
+
+.leaflet-control-attribution {
+  @apply text-xs;
+}
+
+/* Date picker customizations */
+.react-datepicker-wrapper {
+  @apply w-full;
+}
+
+.react-datepicker {
+  @apply font-sans border-gray-200;
+}
+
+.react-datepicker__header {
+  @apply bg-gray-50 border-gray-200;
+}
+
+.react-datepicker__day--selected {
+  @apply bg-primary-600 text-white;
+}
+
+.react-datepicker__day:hover {
+  @apply bg-primary-100;
+}
+
+/* Chart customizations */
+.chart-container {
+  @apply relative w-full h-full;
+}

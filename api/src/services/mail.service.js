@@ -34,7 +34,6 @@ class MailService {
                 subject: sub,
                 html: message,
             })
-            console.log(ack)
             return ack;
         }catch(exception){
             console.log("Error sending email...", exception)

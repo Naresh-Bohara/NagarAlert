@@ -8,14 +8,19 @@ import router from "./router.config.js";
 const application = express()
 
 // allow cors
-application.use(cors())
+application.use(cors({
+  origin: ['http://localhost:3000'], // Your frontend URL
+  credentials: true, // Allow credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}))
 
 // parser
 application.use(express.json())
 application.use(express.urlencoded({extended:true}))
 
 //healthcheck
-application.use("/health", (request, response)=>{
+application.use("/api/v1/health", (request, response)=>{
     response.json({
         message:"working perfectly",
     })

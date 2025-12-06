@@ -2,40 +2,30 @@ import { Router } from "express";
 import { checkLogin } from "../../middlewares/auth.middleware.js";
 import { Require } from "../../middlewares/rbac.middleware.js";
 import { bodyValidator, queryValidator, paramsValidator } from "../../middlewares/request-validator.middleware.js";
-import { 
-  staffRegistrationDTO, 
-  staffUpdateDTO, 
-  staffFilterDTO, 
-  staffIdDTO 
-} from "./staff.request.js";
-
+import { staffRegistrationDTO, staffUpdateDTO, staffSelfUpdateDTO, staffQueryFilterDTO, staffIdDTO, staffReportsFilterDTO } from "./staff.request.js";
 import { profileImageUpload } from "../../config/upload.config.js";
 import staffCtrl from "./staff.controller.js";
+import Joi from "joi";
 
 const staffRouter = Router();
 
-// Admin creates new staff
-staffRouter.post("/",checkLogin, Require.AdminOnly,profileImageUpload,bodyValidator(staffRegistrationDTO),staffCtrl.createStaff);
+// Admin Management
+staffRouter.route("/")
+  .post(checkLogin, Require.AdminOnly, profileImageUpload, bodyValidator(staffRegistrationDTO), staffCtrl.createStaff)
+  .get(checkLogin, Require.AdminOnly, queryValidator(staffQueryFilterDTO), staffCtrl.getStaff);
 
-// Admin gets all staff with filtering
-staffRouter.get("/",checkLogin,Require.AdminOnly,queryValidator(staffFilterDTO),staffCtrl.getStaff);
+staffRouter.route("/:id")
+  .get(checkLogin, Require.AdminOnly, paramsValidator(staffIdDTO), staffCtrl.getStaffById)
+  .put(checkLogin, Require.AdminOnly, profileImageUpload, paramsValidator(staffIdDTO), bodyValidator(staffUpdateDTO), staffCtrl.updateStaff)
+  .delete(checkLogin, Require.AdminOnly, paramsValidator(staffIdDTO), staffCtrl.deleteStaff);
 
-// Admin gets single staff details
-staffRouter.get("/:id",checkLogin,Require.AdminOnly,paramsValidator(staffIdDTO),staffCtrl.getStaffById);
+// Staff Self-Service
+staffRouter.get("/profile/me", checkLogin, Require.StaffOnly, staffCtrl.getMyProfile);
+staffRouter.put("/profile/me", checkLogin, Require.StaffOnly, profileImageUpload, bodyValidator(staffSelfUpdateDTO), staffCtrl.updateMyProfile);
+staffRouter.get("/reports/assigned", checkLogin, Require.StaffOnly, queryValidator(staffReportsFilterDTO), staffCtrl.getMyAssignedReports);
 
-// Admin updates staff
-staffRouter.put("/:id",checkLogin,Require.AdminOnly,profileImageUpload,paramsValidator(staffIdDTO),bodyValidator(staffUpdateDTO),staffCtrl.updateStaff);
-
-// Admin deletes staff
-staffRouter.delete("/:id",checkLogin,Require.AdminOnly,paramsValidator(staffIdDTO),staffCtrl.deleteStaff);
-
-// Staff gets own profile
-staffRouter.get("/profile/me",checkLogin,Require.StaffOnly,staffCtrl.getMyProfile);
-
-// Staff updates own profile
-staffRouter.put("/profile/me",checkLogin,Require.StaffOnly,profileImageUpload,bodyValidator(staffUpdateDTO),staffCtrl.updateMyProfile);
-
-// Staff gets assigned reports
-staffRouter.get("/reports/assigned",checkLogin,Require.StaffOnly,queryValidator(staffFilterDTO),staffCtrl.getMyAssignedReports);
+// Field Staff Operations
+staffRouter.patch("/availability", checkLogin, Require.FieldStaff, bodyValidator(Joi.object({ availability: Joi.boolean().required() })), staffCtrl.updateAvailability);
+staffRouter.patch("/location", checkLogin, Require.FieldStaff, bodyValidator(Joi.object({ lat: Joi.number().required(), lng: Joi.number().required() })), staffCtrl.updateLocation);
 
 export default staffRouter;

@@ -18,7 +18,7 @@ const userRegistrationDTO = Joi.object({
     "string.min": "Password too short."
   }),
 
- role: Joi.string()
+  role: Joi.string()
     .valid("citizen", "municipality_admin", "field_staff", "sponsor")
     .optional()
     .default("citizen")
@@ -26,7 +26,7 @@ const userRegistrationDTO = Joi.object({
       "any.only": "Invalid role."
     }),
 
-   municipalityId: Joi.string()
+  municipalityId: Joi.string()
     .pattern(/^[0-9a-fA-F]{24}$/)
     .optional() 
     .messages({
@@ -41,13 +41,54 @@ const userRegistrationDTO = Joi.object({
       "string.pattern.base": "Invalid Nepali number."
     }),
 
-  address: Joi.string().required().messages({
-    "string.empty": "Address required."
+  address: Joi.string().min(5).required().messages({
+    "string.empty": "Address required.",
+    "string.min": "Address must be at least 5 characters."
   }),
 
-  ward: Joi.string().required().messages({
-    "string.empty": "Ward required."
-  }),
+  ward: Joi.string()
+    .pattern(/^\d+$/)
+    .required()
+    .messages({
+      "string.empty": "Ward required.",
+      "string.pattern.base": "Ward must be a number."
+    }),
+
+  // Location field - can be object or JSON string
+  location: Joi.alternatives()
+    .try(
+      // Accept as object
+      Joi.object({
+        latitude: Joi.number()
+          .min(-90)
+          .max(90)
+          .required()
+          .messages({
+            "number.base": "Latitude must be a number.",
+            "number.min": "Latitude must be between -90 and 90.",
+            "number.max": "Latitude must be between -90 and 90.",
+            "any.required": "Latitude is required."
+          }),
+        longitude: Joi.number()
+          .min(-180)
+          .max(180)
+          .required()
+          .messages({
+            "number.base": "Longitude must be a number.",
+            "number.min": "Longitude must be between -180 and 180.",
+            "number.max": "Longitude must be between -180 and 180.",
+            "any.required": "Longitude is required."
+          }),
+        address: Joi.string().optional()
+      }),
+      // Accept as string (JSON string from FormData)
+      Joi.string()
+    )
+    .optional()
+    .messages({
+      "alternatives.match": "Location must be a valid object or JSON string.",
+      "alternatives.types": "Location must be a valid object or JSON string."
+    }),
 
   profileImage: Joi.string().optional()
 });
@@ -109,4 +150,12 @@ const changePasswordDTO = Joi.object({
   })
 });
 
-export { userRegistrationDTO, loginDTO, activationDTO, resendOtpDTO, forgetPasswordDTO, resetPasswordDTO, changePasswordDTO };
+export { 
+  userRegistrationDTO, 
+  loginDTO, 
+  activationDTO, 
+  resendOtpDTO, 
+  forgetPasswordDTO, 
+  resetPasswordDTO, 
+  changePasswordDTO 
+};

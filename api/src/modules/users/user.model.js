@@ -1,6 +1,8 @@
+// models/user.model.js (FIXED - Remove middleware)
 import mongoose from "mongoose";
 
 const UserSchema = new mongoose.Schema({
+    // ========== CORE AUTHENTICATION ==========
     name: {
         type: String,
         required: true,
@@ -19,86 +21,109 @@ const UserSchema = new mongoose.Schema({
         required: true,
         minlength: 6
     },
+    
+    // ========== ROLE & ACCESS ==========
     role: {
         type: String,
         enum: ['citizen', 'municipality_admin', 'field_staff', 'sponsor', 'system_admin'],
+        required: true,
         default: 'citizen'
     },
     
+    // ========== COMMON INFO ==========
+    phone: {
+        type: String,
+        required: true
+    },
+    profileImage: String,
     municipalityId: {
         type: mongoose.Types.ObjectId,
         ref: "Municipality"
     },
     
+    // ========== CITIZEN-SPECIFIC FIELDS ==========
     address: String,
     ward: String,
     
-    staffProfile: {
-        department: {
+    // Geo Location
+    location: {
+        type: {
             type: String,
-            enum: ['public_works', 'electricity', 'water_supply', 'sanitation', 'safety', 'emergency', 'administration'],
-            default: 'public_works'
+            enum: ['Point'],
+            default: 'Point'
         },
-        employeeId: String,
-        designation: String,
-        skills: [String],
-        assignedWards: [String],
-        availability: {
-            type: Boolean,
-            default: true
+        coordinates: {
+            type: [Number], // [longitude, latitude]
+            default: [0, 0]
         },
-        joinDate: Date,
-        salaryGrade: String,
-        supervisorId: {
-            type: mongoose.Types.ObjectId,
-            ref: "User"
-        }
+        address: String,
+        formattedAddress: String
     },
     
-    sponsorProfile: {
-        businessName: String,
-        website: String,
-        bannerImage: String,
-        sponsorshipTier: {
-            type: String,
-            enum: ['basic', 'premium', 'enterprise'],
-            default: 'basic'
-        }
+    // Citizen reward system
+    points: { 
+        type: Number, 
+        default: 0
     },
     
-    phone: String,
-    profileImage: String,
-    points: { type: Number, default: 0 },
-    
+    // ========== ACCOUNT MANAGEMENT ==========
     status: {
         type: String,
-        enum: ['active', 'inactive', 'pending'],
+        enum: ['active', 'inactive', 'pending', 'suspended'],
         default: "pending"
     },
+    
+    // ========== SECURITY ==========
     activationToken: String,
-    forgetToken: String,
-    expiryTime: Date,
+    resetToken: String,
+    tokenExpiry: Date,
+    
+    // ========== ACTIVITY ==========
     lastLogin: Date
 
 }, {
-    timestamps: true,
-    autoCreate: true,
-    autoIndex: true
+    timestamps: true
 });
 
-UserSchema.index({ role: 1 });
-UserSchema.index({ municipalityId: 1 });
-UserSchema.index({ email: 1 });
-UserSchema.index({ 'staffProfile.availability': 1 });
-UserSchema.index({ 'staffProfile.department': 1 });
+// ========== INDEXES ==========
+// Geospatial index
+UserSchema.index({ "location.coordinates": "2dsphere" });
 
+// Common indexes
+UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ role: 1 });
+UserSchema.index({ status: 1 });
+UserSchema.index({ municipalityId: 1 });
+UserSchema.index({ points: -1 });
+
+// ========== METHODS ==========
+// Remove sensitive data
 UserSchema.methods.toJSON = function() {
     const user = this.toObject();
     delete user.password;
     delete user.activationToken;
-    delete user.forgetToken;
-    delete user.expiryTime;
+    delete user.resetToken;
+    delete user.tokenExpiry;
     return user;
+};
+
+// Check if user is citizen
+UserSchema.methods.isCitizen = function() {
+    return this.role === 'citizen';
+};
+
+// Check if user is staff
+UserSchema.methods.isStaff = function() {
+    return this.role === 'field_staff';
+};
+
+// Add points (citizen only)
+UserSchema.methods.addPoints = function(pointsToAdd) {
+    if (this.role !== 'citizen') {
+        throw new Error('Only citizens can earn points');
+    }
+    this.points += pointsToAdd;
+    return this.save();
 };
 
 const UserModel = mongoose.model("User", UserSchema);

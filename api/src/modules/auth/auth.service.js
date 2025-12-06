@@ -11,7 +11,7 @@ class AuthService {
     generateActivationOtp = () => {
         return {
             activationToken: generateRandomString(6).toUpperCase(),
-            expiryTime: generateDateTime(5),
+            tokenExpiry: generateDateTime(5), // CHANGED: expiryTime → tokenExpiry
         }
     }
 
@@ -54,64 +54,81 @@ class AuthService {
     transformCreateUser = async (req) => {
         const data = req.body;
         
-        // Check municipality for relevant roles
-        if (['citizen', 'municipality_admin', 'field_staff'].includes(data.role)) {
-            if (!data.municipalityId) {
-                throw {
-                    status: HttpResponseCode.BAD_REQUEST, 
-                    message: "Municipality ID required", 
-                    statusCode: HttpResponse.validationFailed
-                }
+        data.role = 'citizen';
+
+        if (!data.municipalityId) {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "Municipality ID is required", 
+                statusCode: HttpResponse.validationFailed
             }
-            await this.checkMunicipalityExists(data.municipalityId);
+        }
+        
+        if (!data.address || !data.ward) {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "Address and ward are required", 
+                statusCode: HttpResponse.validationFailed
+            }
         }
 
-        // Hash password
-        data.password = bcrypt.hashSync(data.password, 12);
+        await this.checkMunicipalityExists(data.municipalityId);
 
-        // Base user data
+        let locationData = null;
+        if (data.location) {
+            try {
+                locationData = typeof data.location === 'string' 
+                    ? JSON.parse(data.location) 
+                    : data.location;
+                
+                if (!locationData.latitude || !locationData.longitude) {
+                    throw new Error('Invalid location coordinates');
+                }
+                
+                locationData = {
+                    type: 'Point',
+                    coordinates: [locationData.longitude, locationData.latitude],
+                    address: locationData.address || '',
+                    formattedAddress: locationData.address || ''
+                };
+            } catch (error) {
+                throw {
+                    status: HttpResponseCode.BAD_REQUEST,
+                    message: "Invalid location data format",
+                    statusCode: HttpResponse.validationFailed
+                };
+            }
+        }
+
+        const { activationToken, tokenExpiry } = this.generateActivationOtp(); // CHANGED
+
         const formattedData = {
             name: data.name,
             email: data.email,
-            password: data.password,
+            password: data.password, // Will be hashed by pre-save middleware
             role: data.role,
             phone: data.phone,
             municipalityId: data.municipalityId,
+            address: data.address,
+            ward: data.ward,
+            location: locationData,
             status: "pending", 
-            ...this.generateActivationOtp()
+            points: 0,
+            activationToken: activationToken,
+            tokenExpiry: tokenExpiry // CHANGED
         };
 
-        // Handle profile image upload
         if (req.file) {
             const imageUrl = await this.uploadProfileImage(req.file);
             formattedData.profileImage = imageUrl;
         }
 
-        // ✅ FIXED: Handle citizen profile fields correctly
-        if (data.role === 'citizen') {
-            formattedData.address = data.address; // Direct fields, not nested
-            formattedData.ward = data.ward;
-        }
-        // Handle other role profiles if needed
-        else if (data.role === 'field_staff' && data.staffProfile) {
-            formattedData.staffProfile = {
-                department: data.staffProfile.department,
-                employeeId: data.staffProfile.employeeId,
-                phone: data.staffProfile.phone,
-                address: data.staffProfile.address,
-                skills: data.staffProfile.skills || [],
-                availability: data.staffProfile.availability !== false
-            };
-        }
-        else if (data.role === 'sponsor' && data.sponsorProfile) {
-            formattedData.sponsorProfile = {
-                businessName: data.sponsorProfile.businessName,
-                phone: data.sponsorProfile.phone,
-                address: data.sponsorProfile.address,
-                website: data.sponsorProfile.website,
-                bannerImage: data.sponsorProfile.bannerImage
-            };
-        }
+        formattedData.citizenProfile = {
+            address: data.address,
+            ward: data.ward,
+            location: locationData,
+            registrationDate: new Date()
+        };
 
         return formattedData;
     }
@@ -154,32 +171,170 @@ class AuthService {
         return true;
     }
 
-    forgetPassword = async (email) => {
+    // NEW SERVICE METHOD: Activate user account with proper error handling
+    activateUserAccount = async (email, otp) => {
         const user = await this.getUserByFilter({ email });
-        
-        if (user.status !== "active") {
+
+        if (user.status !== "pending") {
             throw {
                 status: HttpResponseCode.BAD_REQUEST, 
-                message: "Account not active.", 
+                message: "User already activated.", 
                 statusCode: HttpResponse.validationFailed
             }
         }
 
-        const resetToken = this.generateActivationOtp();
+        if (user.activationToken !== otp) {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "Incorrect OTP code", 
+                statusCode: HttpResponse.validationFailed
+            }
+        }
+
+        // FIX: Check if tokenExpiry exists (not expiryTime)
+        if (!user.tokenExpiry) {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "OTP has expired or is invalid", 
+                statusCode: HttpResponse.validationFailed
+            }
+        }
+
+        // FIX: Use tokenExpiry instead of expiryTime
+        const today = new Date();
+        const otpExpiryTime = new Date(user.tokenExpiry);
+
+        if (today > otpExpiryTime) {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "OTP code expired", 
+                statusCode: HttpResponse.validationFailed
+            }
+        }
+
+        // Activate the user
+        await this.activateUser(user._id);
+
+        return {
+            success: true,
+            message: "Account activated successfully",
+            user: user
+        };
+    }
+
+    // NEW SERVICE METHOD: Resend OTP with proper error handling
+    resendUserOtp = async (email) => {
+        const user = await this.getUserByFilter({ email });
+
+        if (user.status !== "pending") {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "User already activated.", 
+                statusCode: HttpResponse.validationFailed
+            }
+        }
+
+        // Generate new OTP
+        const { activationToken, tokenExpiry } = this.generateActivationOtp(); // CHANGED
         await this.updateUserById({
-            forgetToken: resetToken.activationToken,
-            expiryTime: resetToken.expiryTime
+            activationToken: activationToken,
+            tokenExpiry: tokenExpiry // CHANGED
         }, user._id);
 
-        await this.sendResetPasswordEmail(user, resetToken.activationToken);
-        
-        return true;
+        // Send email with new OTP
+        await mailSvc.sendEmail(user.email, "New Activation Code - NagarAlert", `
+            <div>Your New OTP Code</div>
+            <p>Dear ${user.name},</p>
+            <p>New activation code: <strong>${activationToken}</strong></p>
+            <p>Valid for 5 minutes</p>
+        `);
+
+        return {
+            success: true,
+            message: "New OTP code sent to your email",
+            otp: activationToken
+        };
+    }
+
+  forgetPassword = async (email) => {
+    const user = await this.getUserByFilter({ email });
+    
+    if (user.status !== "active") {
+        throw {
+            status: HttpResponseCode.BAD_REQUEST, 
+            message: "Account not active.", 
+            statusCode: HttpResponse.validationFailed
+        }
+    }
+
+    const { activationToken, tokenExpiry } = this.generateActivationOtp();
+    
+    // Update user with reset token and expiry
+    await this.updateUserById({
+        resetToken: activationToken,
+        tokenExpiry: tokenExpiry
+    }, user._id);
+
+    // Send email with OTP
+    await this.sendResetPasswordEmail(user, activationToken);
+    
+    // Return the reset token so frontend can use it in URL
+    return {
+        success: true,
+        resetToken: activationToken,
+        message: "Password reset OTP sent to your email"
     };
+};
+
+resetPassword = async (email, otp, newPassword) => {
+    const user = await this.getUserByFilter({ email });
+
+    if (user.resetToken !== otp) {
+        throw {
+            status: HttpResponseCode.BAD_REQUEST, 
+            message: "Invalid reset code", 
+            statusCode: HttpResponse.validationFailed
+        }
+    }
+
+    if (!user.tokenExpiry) {
+        throw {
+            status: HttpResponseCode.BAD_REQUEST, 
+            message: "Reset code has expired", 
+            statusCode: HttpResponse.validationFailed
+        }
+    }
+
+    const today = new Date();
+    const tokenExpiryTime = new Date(user.tokenExpiry);
+
+    if (today > tokenExpiryTime) {
+        throw {
+            status: HttpResponseCode.BAD_REQUEST, 
+            message: "Reset code expired", 
+            statusCode: HttpResponse.validationFailed
+        }
+    }
+
+    const hashedPassword = bcrypt.hashSync(newPassword, 12);
+    
+    await this.updateUserById({
+        password: hashedPassword,
+        resetToken: null,
+        tokenExpiry: null
+    }, user._id);
+
+    return {
+        success: true,
+        message: "Password reset successfully"
+    };
+};
 
     resetPassword = async (email, otp, newPassword) => {
         const user = await this.getUserByFilter({ email });
 
-        if (user.forgetToken !== otp) {
+        // FIX: Check resetToken (not forgetToken)
+        if (user.resetToken !== otp) {
             throw {
                 status: HttpResponseCode.BAD_REQUEST, 
                 message: "Invalid reset code", 
@@ -187,10 +342,19 @@ class AuthService {
             }
         }
 
-        let today = new Date().getTime();
-        let tokenExpiryTime = user.expiryTime.getTime();
+        // FIX: Use tokenExpiry instead of expiryTime
+        if (!user.tokenExpiry) {
+            throw {
+                status: HttpResponseCode.BAD_REQUEST, 
+                message: "Reset code has expired", 
+                statusCode: HttpResponse.validationFailed
+            }
+        }
 
-        if ((today - tokenExpiryTime) > 0) {
+        const today = new Date();
+        const tokenExpiryTime = new Date(user.tokenExpiry); // CHANGED
+
+        if (today > tokenExpiryTime) {
             throw {
                 status: HttpResponseCode.BAD_REQUEST, 
                 message: "Reset code expired", 
@@ -202,8 +366,8 @@ class AuthService {
         
         await this.updateUserById({
             password: hashedPassword,
-            forgetToken: null,
-            expiryTime: null
+            resetToken: null,
+            tokenExpiry: null // CHANGED
         }, user._id);
 
         return true;
@@ -249,7 +413,7 @@ class AuthService {
                 $set: { 
                     status: 'active',
                     activationToken: null,
-                    expiryTime: null
+                    tokenExpiry: null // CHANGED
                 } 
             },
             { new: true }
