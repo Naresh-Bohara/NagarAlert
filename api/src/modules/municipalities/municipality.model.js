@@ -23,6 +23,13 @@ const MunicipalitySchema = new mongoose.Schema({
     }
   },
   
+  boundaryBox: {
+    minLat: Number,
+    maxLat: Number,
+    minLng: Number,
+    maxLng: Number
+  },
+  
   adminId: {
     type: mongoose.Types.ObjectId,
     ref: "User",

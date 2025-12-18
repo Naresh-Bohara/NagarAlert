@@ -20,6 +20,13 @@ const createMunicipalityDTO = Joi.object({
     }).optional()
   }).required(),
 
+  boundaryBox: Joi.object({
+    minLat: Joi.number().min(-90).max(90).optional(),
+    maxLat: Joi.number().min(-90).max(90).optional(),
+    minLng: Joi.number().min(-180).max(180).optional(),
+    maxLng: Joi.number().min(-180).max(180).optional()
+  }).optional(),
+
   adminUser: Joi.object({
     name: Joi.string().required().messages({
       "string.empty": "Admin name is required"
@@ -73,6 +80,13 @@ const updateMunicipalityDTO = Joi.object({
       lat: Joi.number().min(-90).max(90).optional(),
       lng: Joi.number().min(-180).max(180).optional()
     }).optional()
+  }).optional(),
+
+  boundaryBox: Joi.object({
+    minLat: Joi.number().min(-90).max(90).optional(),
+    maxLat: Joi.number().min(-90).max(90).optional(),
+    minLng: Joi.number().min(-180).max(180).optional(),
+    maxLng: Joi.number().min(-180).max(180).optional()
   }).optional(),
 
   contactEmail: Joi.string().email().optional(),
