@@ -2,26 +2,28 @@ import HttpResponse from "../../constants/response-status.contants.js";
 import sponsorSvc from "./sponsor.service.js";
 
 class SponsorController {
-  createSponsor = async (req, res, next) => {
-    try {
-      const adminId = req.loggedInUser._id;
-      const sponsorData = req.body;
-      const files = req.files;
+createSponsor = async (req, res, next) => {
+  try {
+    const adminId = req.loggedInUser._id;
+    const sponsorData = req.body;
+    const bannerImage = req.file ? req.file.path : null;
+    
+    console.log('Uploaded file:', req.file); // Debug log
+    console.log('Banner image path:', bannerImage); // Debug log
+    
+    const sponsor = await sponsorSvc.createSponsor(sponsorData, bannerImage, adminId);
 
-      const bannerImage = files && files[0] ? files[0].path : null;
-      const sponsor = await sponsorSvc.createSponsor(sponsorData, bannerImage, adminId);
+    res.status(201).json({
+      data: sponsor,
+      message: "Sponsor created successfully",
+      status: HttpResponse.success,
+      options: null
+    });
 
-      res.status(201).json({
-        data: sponsor,
-        message: "Sponsor created successfully",
-        status: HttpResponse.success,
-        options: null
-      });
-
-    } catch (exception) {
-      next(exception);
-    }
-  };
+  } catch (exception) {
+    next(exception);
+  }
+};
 
   getSponsors = async (req, res, next) => {
     try {
@@ -58,26 +60,26 @@ class SponsorController {
     }
   };
 
-  updateSponsor = async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const updateData = req.body;
-      const files = req.files;
+ updateSponsor = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const bannerImage = req.file ? req.file.path : null;
+    
+    const sponsor = await sponsorSvc.updateSponsor(id, updateData, bannerImage);
 
-      const bannerImage = files && files[0] ? files[0].path : null;
-      const sponsor = await sponsorSvc.updateSponsor(id, updateData, bannerImage);
+    res.json({
+      data: sponsor,
+      message: "Sponsor updated successfully",
+      status: HttpResponse.success,
+      options: null
+    });
 
-      res.json({
-        data: sponsor,
-        message: "Sponsor updated successfully",
-        status: HttpResponse.success,
-        options: null
-      });
-
-    } catch (exception) {
-      next(exception);
-    }
-  };
+  } catch (exception) {
+    next(exception);
+  }
+};
 
   deleteSponsor = async (req, res, next) => {
     try {

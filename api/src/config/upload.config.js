@@ -19,6 +19,9 @@ export const imagesUpload = uploadFile(["image"]).array('images', 10);
 // Any file type (be careful with this one)
 export const anyFileUpload = uploadFile(["image", "video", "document"]).single('file');
 
+export const sponsorImageUpload = uploadFile(["image"]).single("bannerImage");
+
+
 export default {
     reportUpload,
     profileImageUpload,

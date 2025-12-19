@@ -46,7 +46,6 @@ const SponsorSchema = new mongoose.Schema({
   // Media
   bannerImage: {
     type: String,
-    required: true
   },
   
   website: String,

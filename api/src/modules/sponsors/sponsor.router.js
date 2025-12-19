@@ -3,13 +3,13 @@ import { checkLogin } from "../../middlewares/auth.middleware.js";
 import { Require } from "../../middlewares/rbac.middleware.js";
 import { bodyValidator, queryValidator, paramsValidator } from "../../middlewares/request-validator.middleware.js";
 import { createSponsorDTO, updateSponsorDTO, sponsorFilterDTO, sponsorIdDTO } from "./sponsor.request.js";
-import { imagesUpload } from "../../config/upload.config.js";
+import { imagesUpload, sponsorImageUpload } from "../../config/upload.config.js";
 import sponsorCtrl from "./sponsor.controller.js";
 
 const sponsorRouter = Router();
 
 // Admin creates new sponsor
-sponsorRouter.post("/", checkLogin, Require.AdminOnly, imagesUpload, bodyValidator(createSponsorDTO), sponsorCtrl.createSponsor);
+sponsorRouter.post("/", checkLogin, Require.AdminOnly, sponsorImageUpload, bodyValidator(createSponsorDTO), sponsorCtrl.createSponsor);
 
 // Get all sponsors with filtering
 sponsorRouter.get("/", queryValidator(sponsorFilterDTO), sponsorCtrl.getSponsors);

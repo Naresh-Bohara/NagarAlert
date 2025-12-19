@@ -31,7 +31,7 @@ const ReportSchema = new mongoose.Schema({
   photos: [String],
   videos: [String],
 
-   priority: {
+  priority: {
     type: String,
     enum: ['low', 'medium', 'high', 'urgent'],
     default: 'medium'
@@ -75,6 +75,22 @@ const ReportSchema = new mongoose.Schema({
   pointsAwarded: {
     type: Number,
     default: 0
+  },
+
+  validationInfo: {
+    locationValidated: { type: Boolean, default: false },
+    boundaryBox: {
+      minLat: Number,
+      maxLat: Number,
+      minLng: Number,
+      maxLng: Number
+    },
+    imageValidation: {
+      totalImages: Number,
+      imagesWithGPS: Number,
+      imagesNoGPS: Number,
+      allWithinBoundary: Boolean
+    }
   }
 
 }, {

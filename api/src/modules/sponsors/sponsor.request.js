@@ -37,6 +37,7 @@ const createSponsorDTO = Joi.object({
     "string.empty": "Title is required",
     "string.min": "Title must be at least 5 characters"
   }),
+  bannerImage: Joi.string().uri().optional(),
 
   description: Joi.string().max(500).optional(),
 
